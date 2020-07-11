@@ -12,6 +12,10 @@ public class ClientHandler {
     private Server server;
     private String nick;
 
+    public String getNick(){
+        return this.nick;
+    }
+
     public ClientHandler(Server server, Socket socket) {
         try {
             this.socket = socket;
@@ -28,13 +32,20 @@ public class ClientHandler {
                             if (str.startsWith("/auth")) {
                                 String[] tokens = str.split(" ");
                                 String newNick = AuthService.getNickByLoginAndPass(tokens[1], tokens[2]);
-                                if (newNick != null) {
-                                    sendMsg("/authok");
-                                    nick = newNick;
-                                    server.subscribe(ClientHandler.this);
-                                    break;
-                                } else {
-                                    sendMsg("Неверный логин/пароль");
+
+                                        if (newNick != null){
+                                            if (!server.checkOnline(newNick)){
+                                                nick = newNick;
+                                                sendMsg("/authok");
+                                                server.subscribe(ClientHandler.this);
+
+                                                break;
+                                            } else {
+                                                sendMsg("Учетная запись уже занята");
+                                            }
+                                        } else {
+                                            sendMsg("Неверный логин/пароль");
+
                                 }
                             }
                         }
@@ -45,7 +56,19 @@ public class ClientHandler {
                                 out.writeUTF("/serverClosed");
                                 break;
                             }
-                            server.broadcastMsg(nick + ": " + str);
+
+                // БЫЛО                       server.broadcastMsg(nick + ": " + str);
+                // СТАЛО
+                // набираем /private кому-NickName Сообщение
+                // передаем (отправитель, сообщение), где сообщение = /private + Кому + сообщение
+
+                            if (str.startsWith("/private")){
+                                server.privateMessage(nick, str);
+                            } else {
+
+//                                server.broadcastMsg(nick + ": " + str);
+                                server.broadcastMsg(nick, str);
+                            }
 
                         }
 
